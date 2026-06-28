@@ -26,16 +26,58 @@ export class ApiError extends Error {
   }
 }
 
-// In-memory access token, set by the auth layer. Authenticated requests use it.
+// In-memory tokens, set by the auth layer. Authenticated requests use them.
 let accessToken: string | null = null;
+let refreshToken: string | null = null;
 
-export function setAccessToken(token: string | null): void {
-  accessToken = token;
+// Hooks the auth layer registers so the client can persist a refreshed access
+// token and react when the session can no longer be refreshed.
+let onAccessTokenRefreshed: (access: string) => void = () => {};
+let onAuthFailure: () => void = () => {};
+
+export function setTokens(access: string | null, refresh: string | null): void {
+  accessToken = access;
+  refreshToken = refresh;
+}
+
+export function setAuthCallbacks(callbacks: {
+  onAccessTokenRefreshed?: (access: string) => void;
+  onAuthFailure?: () => void;
+}): void {
+  if (callbacks.onAccessTokenRefreshed) {
+    onAccessTokenRefreshed = callbacks.onAccessTokenRefreshed;
+  }
+  if (callbacks.onAuthFailure) {
+    onAuthFailure = callbacks.onAuthFailure;
+  }
+}
+
+async function tryRefresh(): Promise<boolean> {
+  if (!refreshToken) {
+    return false;
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh: refreshToken }),
+    });
+    if (!res.ok) {
+      return false;
+    }
+    const data = await res.json();
+    accessToken = data.access;
+    onAccessTokenRefreshed(data.access);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function request<T>(
   path: string,
   options: { method?: string; body?: unknown; auth?: boolean } = {},
+  retried = false,
 ): Promise<T> {
   const { method = "GET", body, auth = false } = options;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -56,6 +98,14 @@ async function request<T>(
       0,
       err,
     );
+  }
+
+  // Expired access token: refresh once and retry, else surface a logout.
+  if (response.status === 401 && auth && !retried) {
+    if (await tryRefresh()) {
+      return request<T>(path, options, true);
+    }
+    onAuthFailure();
   }
 
   const text = await response.text();
@@ -151,4 +201,20 @@ export function postAttempts(
     auth: true,
     body: { lesson_id: lessonId, attempts },
   });
+}
+
+// --- M3: progress ---
+
+export interface Progress {
+  display_name: string;
+  total_xp: number;
+  current_streak: number;
+  longest_streak: number;
+  skills_learned: number;
+  skills_due: number;
+  accuracy_7d: number | null;
+}
+
+export function getProgress(): Promise<Progress> {
+  return request<Progress>("/me/progress", { auth: true });
 }

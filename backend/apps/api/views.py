@@ -1,3 +1,6 @@
+from datetime import timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -14,6 +17,7 @@ from .serializers import (
     AttemptBatchSerializer,
     LessonDetailSerializer,
     NextItemSerializer,
+    ProgressSerializer,
 )
 
 XP_PER_CORRECT = 10
@@ -26,6 +30,15 @@ def _get_player(request):
             "This account has no player profile. Register via /auth/register."
         )
     return player
+
+
+def _local_today(player):
+    """Today's date in the player's timezone, falling back to UTC."""
+    try:
+        tz = ZoneInfo(player.timezone or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("UTC")
+    return timezone.now().astimezone(tz).date()
 
 
 class NextView(APIView):
@@ -144,7 +157,15 @@ class AttemptsView(APIView):
             progress.save()
 
             player.total_xp += xp_awarded
-            player.save(update_fields=["total_xp"])
+            player.record_activity(_local_today(player))
+            player.save(
+                update_fields=[
+                    "total_xp",
+                    "current_streak",
+                    "longest_streak",
+                    "last_active_date",
+                ]
+            )
 
         return Response(
             {
@@ -155,3 +176,38 @@ class AttemptsView(APIView):
             },
             status=status.HTTP_201_CREATED,
         )
+
+
+class ProgressView(APIView):
+    """Stats for the progress screen.
+
+    ``skills_learned`` and ``accuracy_7d`` are derived from the attempt log.
+    ``skills_due`` is a placeholder (0) until spaced repetition lands in M4.
+    """
+
+    @extend_schema(responses=ProgressSerializer)
+    def get(self, request):
+        player = _get_player(request)
+        since = timezone.now() - timedelta(days=7)
+        recent = ExerciseAttempt.objects.filter(player=player, created_at__gte=since)
+        total_recent = recent.count()
+        correct_recent = recent.filter(is_correct=True).count()
+        accuracy_7d = (
+            round(correct_recent / total_recent, 2) if total_recent else None
+        )
+        skills_learned = (
+            ExerciseAttempt.objects.filter(player=player, is_correct=True)
+            .values("skill")
+            .distinct()
+            .count()
+        )
+        data = {
+            "display_name": player.display_name,
+            "total_xp": player.total_xp,
+            "current_streak": player.current_streak,
+            "longest_streak": player.longest_streak,
+            "skills_learned": skills_learned,
+            "skills_due": 0,
+            "accuracy_7d": accuracy_7d,
+        }
+        return Response(ProgressSerializer(data).data)

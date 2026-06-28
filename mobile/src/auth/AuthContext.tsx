@@ -7,7 +7,12 @@ import React, {
   useState,
 } from "react";
 import * as api from "../api/client";
-import { clearTokens, loadTokens, saveTokens } from "./storage";
+import {
+  clearTokens,
+  loadTokens,
+  saveAccessToken,
+  saveTokens,
+} from "./storage";
 
 interface AuthState {
   initializing: boolean;
@@ -30,11 +35,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [player, setPlayer] = useState<api.Player | null>(null);
 
+  const logout = useCallback(async () => {
+    await clearTokens();
+    api.setTokens(null, null);
+    setPlayer(null);
+    setIsAuthenticated(false);
+  }, []);
+
+  useEffect(() => {
+    api.setAuthCallbacks({
+      onAccessTokenRefreshed: (access) => {
+        void saveAccessToken(access);
+      },
+      onAuthFailure: () => {
+        void logout();
+      },
+    });
+  }, [logout]);
+
   useEffect(() => {
     (async () => {
       const tokens = await loadTokens();
       if (tokens) {
-        api.setAccessToken(tokens.access);
+        api.setTokens(tokens.access, tokens.refresh);
       }
       setIsAuthenticated(!!tokens);
       setInitializing(false);
@@ -44,7 +67,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const result = await api.login({ email, password });
     await saveTokens({ access: result.access, refresh: result.refresh });
-    api.setAccessToken(result.access);
+    api.setTokens(result.access, result.refresh);
     setPlayer(result.player ?? null);
     setIsAuthenticated(true);
   }, []);
@@ -57,19 +80,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         display_name: displayName,
       });
       await saveTokens({ access: result.access, refresh: result.refresh });
-      api.setAccessToken(result.access);
+      api.setTokens(result.access, result.refresh);
       setPlayer(result.player ?? null);
       setIsAuthenticated(true);
     },
     [],
   );
-
-  const logout = useCallback(async () => {
-    await clearTokens();
-    api.setAccessToken(null);
-    setPlayer(null);
-    setIsAuthenticated(false);
-  }, []);
 
   const addXp = useCallback((amount: number) => {
     setPlayer((prev) =>

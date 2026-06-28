@@ -3,7 +3,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.views import RegisterView
 
-from .views import AttemptsView, LessonDetailView, NextView
+from .views import AttemptsView, LessonDetailView, NextView, ProgressView
 
 app_name = "api"
 
@@ -16,5 +16,6 @@ urlpatterns = [
     path("me/next", NextView.as_view(), name="me-next"),
     path("lessons/<int:pk>", LessonDetailView.as_view(), name="lesson-detail"),
     path("attempts", AttemptsView.as_view(), name="attempts"),
-    # /me/progress is added in M3.
+    # Progress (M3).
+    path("me/progress", ProgressView.as_view(), name="me-progress"),
 ]

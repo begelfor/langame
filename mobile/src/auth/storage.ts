@@ -43,6 +43,10 @@ export async function saveTokens(tokens: Tokens): Promise<void> {
   await setItem(REFRESH_KEY, tokens.refresh);
 }
 
+export async function saveAccessToken(access: string): Promise<void> {
+  await setItem(ACCESS_KEY, access);
+}
+
 export async function loadTokens(): Promise<Tokens | null> {
   const access = await getItem(ACCESS_KEY);
   const refresh = await getItem(REFRESH_KEY);

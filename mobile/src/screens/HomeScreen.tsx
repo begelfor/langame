@@ -12,19 +12,27 @@ import { colors, spacing } from "../theme";
 
 export function HomeScreen({
   onStartLesson,
+  onOpenProgress,
 }: {
   onStartLesson: (lessonId: number, title: string) => void;
+  onOpenProgress: () => void;
 }) {
-  const { player, logout } = useAuth();
+  const { logout } = useAuth();
   const [next, setNext] = useState<api.NextItem | null>(null);
+  const [progress, setProgress] = useState<api.Progress | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadNext = useCallback(async () => {
+  const loadHome = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      setNext(await api.getNext());
+      const [nextItem, prog] = await Promise.all([
+        api.getNext(),
+        api.getProgress(),
+      ]);
+      setNext(nextItem);
+      setProgress(prog);
     } catch (err) {
       setError(err instanceof api.ApiError ? err.message : "Failed to load");
     } finally {
@@ -33,8 +41,8 @@ export function HomeScreen({
   }, []);
 
   React.useEffect(() => {
-    loadNext();
-  }, [loadNext]);
+    loadHome();
+  }, [loadHome]);
 
   const hasLesson = next?.lesson != null;
 
@@ -42,18 +50,21 @@ export function HomeScreen({
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.greeting}>
-          Hi{player?.display_name ? `, ${player.display_name}` : ""}!
+          Hi{progress?.display_name ? `, ${progress.display_name}` : ""}!
         </Text>
         <Pressable onPress={logout} hitSlop={8}>
           <Text style={styles.logout}>Log out</Text>
         </Pressable>
       </View>
 
-      <View style={styles.stats}>
-        <Stat label="XP" value={player?.total_xp ?? 0} />
-        <Stat label="Streak" value={player?.current_streak ?? 0} />
-        <Stat label="Best" value={player?.longest_streak ?? 0} />
-      </View>
+      <Pressable style={styles.stats} onPress={onOpenProgress}>
+        <Stat label="XP" value={progress?.total_xp ?? 0} />
+        <Stat label="Streak" value={progress?.current_streak ?? 0} />
+        <Stat label="Best" value={progress?.longest_streak ?? 0} />
+      </Pressable>
+      <Pressable onPress={onOpenProgress} hitSlop={8}>
+        <Text style={styles.detailsLink}>View progress details ›</Text>
+      </Pressable>
 
       <View style={styles.nextCard}>
         <Text style={styles.nextLabel}>What's next</Text>
@@ -62,7 +73,7 @@ export function HomeScreen({
         ) : error ? (
           <>
             <Text style={styles.nextBody}>{error}</Text>
-            <Pressable style={styles.button} onPress={loadNext}>
+            <Pressable style={styles.button} onPress={loadHome}>
               <Text style={styles.buttonText}>Retry</Text>
             </Pressable>
           </>
@@ -124,6 +135,13 @@ const styles = StyleSheet.create({
   },
   statValue: { color: colors.text, fontSize: 24, fontWeight: "800" },
   statLabel: { color: colors.muted, fontSize: 13, marginTop: spacing.xs },
+  detailsLink: {
+    color: colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: -spacing.sm,
+  },
   nextCard: {
     backgroundColor: colors.surface,
     borderRadius: 16,

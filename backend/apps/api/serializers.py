@@ -38,6 +38,16 @@ class AttemptSerializer(serializers.Serializer):
     )
 
 
+class ProgressSerializer(serializers.Serializer):
+    display_name = serializers.CharField()
+    total_xp = serializers.IntegerField()
+    current_streak = serializers.IntegerField()
+    longest_streak = serializers.IntegerField()
+    skills_learned = serializers.IntegerField()
+    skills_due = serializers.IntegerField()
+    accuracy_7d = serializers.FloatField(allow_null=True)
+
+
 class AttemptBatchSerializer(serializers.Serializer):
     lesson_id = serializers.IntegerField()
     attempts = AttemptSerializer(many=True)

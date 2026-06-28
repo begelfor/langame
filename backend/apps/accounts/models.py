@@ -1,3 +1,5 @@
+import datetime
+
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -63,3 +65,19 @@ class Player(models.Model):
 
     def __str__(self):
         return self.display_name
+
+    def record_activity(self, today: datetime.date) -> None:
+        """Update streak fields for activity on ``today`` (player-local date).
+
+        A streak counts consecutive days with at least one completed lesson.
+        Mutates the instance in place; the caller is responsible for saving.
+        """
+        if self.last_active_date == today:
+            return
+        if self.last_active_date == today - datetime.timedelta(days=1):
+            self.current_streak += 1
+        else:
+            self.current_streak = 1
+        self.last_active_date = today
+        if self.current_streak > self.longest_streak:
+            self.longest_streak = self.current_streak

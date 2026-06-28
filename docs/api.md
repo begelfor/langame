@@ -160,12 +160,13 @@ Response (201):
 
 Purpose: render the progress screen.
 
-- Reads: `Player`, `LearnerProfile`.
+- Reads: `Player`, `ExerciseAttempt` (later also `LearnerProfile`/`MemoryState`).
 
 Response (200):
 
 ```json
 {
+  "display_name": "Dana",
   "total_xp": 320,
   "current_streak": 4,
   "longest_streak": 9,
@@ -174,6 +175,13 @@ Response (200):
   "accuracy_7d": 0.82
 }
 ```
+
+Notes (MVP / M3):
+
+- `display_name` is included so the app can render the home and progress screens without a separate `/me` call (login returns only tokens).
+- `skills_learned` = distinct skills with at least one correct attempt; `accuracy_7d` = correct/total attempts over the last 7 days (`null` when there are no recent attempts).
+- `skills_due` is `0` until spaced-repetition scheduling lands in M4 (it needs `MemoryState`).
+- Streak rule: a streak counts consecutive days with at least one completed lesson. "Today" is computed in the player's timezone (`Player.timezone`, default UTC); completing a lesson on a day adjacent to `last_active_date` increments the streak, a gap resets it to 1.
 
 ## Endpoint summary
 
