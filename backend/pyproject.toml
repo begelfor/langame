@@ -1,0 +1,32 @@
+[project]
+name = "langame-backend"
+version = "0.1.0"
+description = "Langame backend: Django + DRF API, Admin, and Celery workers"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=5.1,<5.2",
+    "djangorestframework>=3.15,<3.16",
+    "djangorestframework-simplejwt>=5.3,<6.0",
+    "drf-spectacular>=0.27,<0.28",
+    "psycopg[binary]>=3.2,<4.0",
+    "celery>=5.4,<6.0",
+    "redis>=5.0,<6.0",
+    "django-environ>=0.11,<0.12",
+    "gunicorn>=22.0,<23.0",
+    "django-cors-headers>=4.9.0",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.6,<1.0",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "DJ"]
+
+[tool.ruff.lint.per-file-ignores]
+"*/migrations/*" = ["E501"]

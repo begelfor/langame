@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.ruff_cache/
+
+# Environment
+.env
+*.env.local
+
+# Django
+*.sqlite3
+/backend/media/
+/backend/staticfiles/
+
+# uv
+# (uv.lock IS committed; do not ignore it)
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Node / Expo (mobile, added later)
+node_modules/
+.expo/
+dist/
