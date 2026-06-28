@@ -26,14 +26,21 @@ export class ApiError extends Error {
   }
 }
 
+// In-memory access token, set by the auth layer. Authenticated requests use it.
+let accessToken: string | null = null;
+
+export function setAccessToken(token: string | null): void {
+  accessToken = token;
+}
+
 async function request<T>(
   path: string,
-  options: { method?: string; body?: unknown; token?: string } = {},
+  options: { method?: string; body?: unknown; auth?: boolean } = {},
 ): Promise<T> {
-  const { method = "GET", body, token } = options;
+  const { method = "GET", body, auth = false } = options;
   const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
+  if (auth && accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   let response: Response;
@@ -83,4 +90,65 @@ export function login(input: {
   password: string;
 }): Promise<AuthResult> {
   return request<AuthResult>("/auth/login", { method: "POST", body: input });
+}
+
+// --- M2: playable loop ---
+
+export interface NextItem {
+  item_type: "new_lesson" | "review" | "none";
+  reason: string;
+  lesson: { id: number; title: string } | null;
+  estimated_exercises: number;
+}
+
+export interface ExerciseDTO {
+  id: number;
+  type: "multiple_choice" | "matching" | "listening" | "typing";
+  skill_ids: number[];
+  payload: {
+    prompt_mode?: string;
+    prompt?: { hebrew?: string; image_url?: string; audio_url?: string };
+    options?: string[];
+    answer?: string;
+    [key: string]: unknown;
+  };
+}
+
+export interface LessonDTO {
+  id: number;
+  title: string;
+  exercises: ExerciseDTO[];
+}
+
+export interface AttemptInput {
+  exercise_id: number;
+  is_correct: boolean;
+  latency_ms?: number;
+  answer_given?: string;
+}
+
+export interface AttemptResult {
+  recorded: number;
+  lesson_status: string;
+  xp_awarded: number;
+  current_streak: number;
+}
+
+export function getNext(): Promise<NextItem> {
+  return request<NextItem>("/me/next", { auth: true });
+}
+
+export function getLesson(id: number): Promise<LessonDTO> {
+  return request<LessonDTO>(`/lessons/${id}`, { auth: true });
+}
+
+export function postAttempts(
+  lessonId: number,
+  attempts: AttemptInput[],
+): Promise<AttemptResult> {
+  return request<AttemptResult>("/attempts", {
+    method: "POST",
+    auth: true,
+    body: { lesson_id: lessonId, attempts },
+  });
 }

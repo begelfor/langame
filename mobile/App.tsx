@@ -3,7 +3,7 @@ import React from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { AuthProvider, useAuth } from "./src/auth/AuthContext";
 import { AuthScreen } from "./src/screens/AuthScreen";
-import { HomeScreen } from "./src/screens/HomeScreen";
+import { MainNavigator } from "./src/screens/MainNavigator";
 import { colors } from "./src/theme";
 
 function Root() {
@@ -17,7 +17,7 @@ function Root() {
     );
   }
 
-  return isAuthenticated ? <HomeScreen /> : <AuthScreen />;
+  return isAuthenticated ? <MainNavigator /> : <AuthScreen />;
 }
 
 export default function App() {

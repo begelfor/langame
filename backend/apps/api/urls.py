@@ -3,6 +3,8 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.accounts.views import RegisterView
 
+from .views import AttemptsView, LessonDetailView, NextView
+
 app_name = "api"
 
 urlpatterns = [
@@ -10,6 +12,9 @@ urlpatterns = [
     path("auth/register", RegisterView.as_view(), name="auth-register"),
     path("auth/login", TokenObtainPairView.as_view(), name="auth-login"),
     path("auth/refresh", TokenRefreshView.as_view(), name="auth-refresh"),
-    # Game endpoints (/me/next, /lessons/{id}, /attempts, /me/progress) are added
-    # in milestones M2-M4. See docs/api.md.
+    # Playable loop (M2).
+    path("me/next", NextView.as_view(), name="me-next"),
+    path("lessons/<int:pk>", LessonDetailView.as_view(), name="lesson-detail"),
+    path("attempts", AttemptsView.as_view(), name="attempts"),
+    # /me/progress is added in M3.
 ]

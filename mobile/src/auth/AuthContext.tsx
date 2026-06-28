@@ -20,6 +20,7 @@ interface AuthState {
     displayName: string,
   ) => Promise<void>;
   logout: () => Promise<void>;
+  addXp: (amount: number) => void;
 }
 
 const AuthContext = createContext<AuthState | undefined>(undefined);
@@ -32,6 +33,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       const tokens = await loadTokens();
+      if (tokens) {
+        api.setAccessToken(tokens.access);
+      }
       setIsAuthenticated(!!tokens);
       setInitializing(false);
     })();
@@ -40,6 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (email: string, password: string) => {
     const result = await api.login({ email, password });
     await saveTokens({ access: result.access, refresh: result.refresh });
+    api.setAccessToken(result.access);
     setPlayer(result.player ?? null);
     setIsAuthenticated(true);
   }, []);
@@ -52,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         display_name: displayName,
       });
       await saveTokens({ access: result.access, refresh: result.refresh });
+      api.setAccessToken(result.access);
       setPlayer(result.player ?? null);
       setIsAuthenticated(true);
     },
@@ -60,8 +66,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await clearTokens();
+    api.setAccessToken(null);
     setPlayer(null);
     setIsAuthenticated(false);
+  }, []);
+
+  const addXp = useCallback((amount: number) => {
+    setPlayer((prev) =>
+      prev ? { ...prev, total_xp: prev.total_xp + amount } : prev,
+    );
   }, []);
 
   const value = useMemo<AuthState>(
@@ -72,8 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       login,
       register,
       logout,
+      addXp,
     }),
-    [initializing, isAuthenticated, player, login, register, logout],
+    [initializing, isAuthenticated, player, login, register, logout, addXp],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
