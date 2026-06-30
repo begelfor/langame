@@ -68,17 +68,46 @@ npm install
 npm run web        # opens the app in the browser at http://localhost:8081
 ```
 
-The API base URL is read from `app.json` -> `expo.extra.apiBaseUrl` (defaults to
-`http://127.0.0.1:8000/api/v1`, which works for web and the iOS simulator). Override
-it for other targets with an env var:
+The API base URL is resolved in [mobile/src/config.ts](mobile/src/config.ts): it
+prefers `EXPO_PUBLIC_API_BASE_URL`, then `app.json` -> `expo.extra.apiBaseUrl`
+(default `http://127.0.0.1:8000/api/v1`, which works for web and the iOS simulator).
+
+For anything other than web/simulator, set `EXPO_PUBLIC_API_BASE_URL` in a local
+`.env` file (Expo auto-loads it; `.env` is gitignored, `.env.example` is the template):
 
 ```bash
-# Android emulator (10.0.2.2 is the emulator's alias for the host machine)
-EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:8000/api/v1 npm run android
-
-# Physical device via Expo Go (use your Mac's LAN IP, same Wi-Fi)
-EXPO_PUBLIC_API_BASE_URL=http://192.168.x.x:8000/api/v1 npm start
+cd mobile
+cp .env.example .env
+# then edit .env, e.g. for an Android emulator:
+#   EXPO_PUBLIC_API_BASE_URL=http://10.0.2.2:8000/api/v1
 ```
+
+Restart the Expo dev server after editing `.env` (env vars are read at startup).
+
+### Run on a physical Android device (Expo Go)
+
+The app uses only Expo Go-compatible modules, so no custom dev build is needed.
+
+1. Connect the phone and your Mac to the **same Wi-Fi**.
+2. Find your Mac's LAN IP: `ipconfig getifaddr en0`.
+3. Set it in `mobile/.env`:
+   ```
+   EXPO_PUBLIC_API_BASE_URL=http://<your-mac-lan-ip>:8000/api/v1
+   ```
+4. Start the backend bound to all interfaces so the device can reach it:
+   ```bash
+   cd backend && uv run python manage.py runserver 0.0.0.0:8000
+   ```
+   (macOS may prompt to allow incoming connections — allow it. Sanity check from
+   the phone's browser: `http://<your-mac-lan-ip>:8000/api/docs/`.)
+5. Start Expo and scan the QR code from inside the **Expo Go** app:
+   ```bash
+   cd mobile && npm start
+   ```
+
+If your network blocks device-to-device traffic, use `npx expo start --tunnel`
+(note: a tunnel only routes the Expo bundle, not the API — the phone must still be
+able to reach the backend's host/IP).
 
 What's implemented (M0): an auth screen (register/login) and a placeholder
 "What's next" home screen showing the player's XP and streak. Tokens are stored
